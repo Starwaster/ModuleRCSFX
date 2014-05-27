@@ -144,9 +144,9 @@ public class ModuleRCSFX : ModuleRCS
                             if (!isJustForShow)
                             {
 
-                                thrust = FuelLimitedThrust(thrust);
+                                thrust = FuelLimitedThrust(thrust * thrusterPower);
 
-                                Vector3 force = (-thrusterPower * thrust) * thruster;
+                                Vector3 force = (-1 * thrust) * thruster;
                                 Vector3 position = thrusterTransforms[i].transform.position;
                                 part.Rigidbody.AddForceAtPosition(force, position, ForceMode.Force);
                             }
@@ -208,7 +208,7 @@ public class ModuleRCSFX : ModuleRCS
         foreach (Propellant propellant in propellants)
         {
 
-            float fuelAmount = (thrust * Time.deltaTime) / (this.resourceMass * realISP * 9.82f);
+            float fuelAmount = (thrust * Time.deltaTime) / (this.resourceMass * realISP * G);
             float requestedAmount = fuelAmount * propellant.ratio;
             float actualAmount = part.RequestResource(propellant.id, requestedAmount);
             if (actualAmount < requestedAmount)
