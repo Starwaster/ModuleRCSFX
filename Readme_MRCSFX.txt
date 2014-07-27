@@ -1,6 +1,5 @@
 ModuleRCSFX is a fixed version of the stock RCS module.
 It is derived from ModuleRCSFX by ialdabaoth (who is awesome).
-
 It also adds support for fields
 enablePitch
 enableYaw
@@ -22,3 +21,4 @@ INSTALLATION:
 unzip to GameData
 
 License remains the ialdabaoth license (CC-BY-SA + tweaks).
+Source is https://github.com/NathanKell/ModuleRCSFX
