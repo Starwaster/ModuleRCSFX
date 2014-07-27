@@ -32,13 +32,19 @@ public class ModuleRCSFX : ModuleRCS
     {
         if (!node.HasNode("PROPELLANT"))
         {
-            ConfigNode c = new ConfigNode();
+            ConfigNode c = new ConfigNode("PROPELLANT");
             c.SetValue("name", resourceName);
             c.SetValue("ratio", "1.0");
             node.AddNode(c);
         }
-        base.SetupPropellant(node);
+        base.OnLoad(node);
         G = 9.80665f;
+    }
+
+    public override string GetInfo()
+    {
+        string text = base.GetInfo();
+        return text;
     }
 
     public override void OnStart(StartState state)
@@ -46,20 +52,13 @@ public class ModuleRCSFX : ModuleRCS
         base.OnStart(state);
     }
 
-    public float getMaxFuelFlow(Propellant p)
+    public float getMaxFuelFlowFX(Propellant p, float isp)
     {
-        return p.ratio * this.thrusterPower / (atmosphereCurve.Evaluate(0f) * 9.82f) / this.resourceMass;
-    }
-
-    public override string GetInfo()
-    {
-        string info = "<b>Thruster Power: </b>" + thrusterPower.ToString("F") + "\n";
-        info += "<b>Thruster ISP: </b>" + atmosphereCurve.Evaluate(1f).ToString("F0")
-              + " (ASL) - " + atmosphereCurve.Evaluate(0f).ToString("F0") + "(Vac)\n";
-        info += "<color=#99ff00ff><b>Requires:</b></color> \n";
-        foreach (Propellant p in propellants)
-            info += "<b>" + p.name + ": </b>" + getMaxFuelFlow(p).ToString("F4") + "/sec. Max. \n";
-        return info;
+        isp *= G;
+        PartResourceDefinition d = PartResourceLibrary.Instance.GetDefinition(p.id);
+        if (d == null)
+            return float.NaN;
+        return p.ratio / mixtureDensity * this.thrusterPower / isp;
     }
 
     Vector3 inputLinear;
