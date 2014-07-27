@@ -5,51 +5,45 @@ using KSP;
 
 public class ModuleRCSFX : ModuleRCS
 {
+    
     [KSPField()]
-    string runningEffectName = "running_closed";
+    public bool useZaxis = false;
+    [KSPField]
+    public bool enableYaw = true;
+    [KSPField]
+    public bool enablePitch = true;
+    [KSPField]
+    public bool enableRoll = true;
 
-    [KSPField()]
-    string engageEffectName = "engage";
+    [KSPField]
+    public bool enableX = true;
+    [KSPField]
+    public bool enableY = true;
+    [KSPField]
+    public bool enableZ = true;
 
-    [KSPField()]
-    string flameoutEffectName = "flameout";
+    [KSPField]
+    public bool useThrottle = false;
 
-    [KSPField()]
-    public bool useZaxis;
-
-    [KSPField()]
-    public bool rcs_active;
 
     public float mixtureFactor;
 
-    private List<Propellant> _props;
-    public List<Propellant> propellants
-    {
-        get
-        {
-            if (_props == null)
-                _props = new List<Propellant>();
-            return _props;
-        }
-
-    }
-
     public override void OnLoad(ConfigNode node)
     {
-        ModuleRCSFX prefab = null;
-        if (part != null && part.partInfo != null)
-            prefab = (ModuleRCSFX)part.partInfo.partPrefab.Modules["ModuleRCSFX"];
-
-        if (prefab != null && prefab.propellants != null)
-            _props = prefab.propellants;
-        else
-            LoadPropellants(node);
+        if (!node.HasNode("PROPELLANT"))
+        {
+            ConfigNode c = new ConfigNode();
+            c.SetValue("name", resourceName);
+            c.SetValue("ratio", "1.0");
+            node.AddNode(c);
+        }
+        base.SetupPropellant(node);
+        G = 9.80665f;
     }
 
     public override void OnStart(StartState state)
     {
         base.OnStart(state);
-        SetupPropellant();
     }
 
     public float getMaxFuelFlow(Propellant p)
@@ -77,8 +71,13 @@ public class ModuleRCSFX : ModuleRCS
         if (this.part.vessel == null)
             return;
 
-        inputLinear = vessel.ReferenceTransform.rotation * new Vector3(vessel.ctrlState.X, vessel.ctrlState.Z, vessel.ctrlState.Y);
-        inputAngular = vessel.ReferenceTransform.rotation * new Vector3(vessel.ctrlState.pitch, vessel.ctrlState.roll, vessel.ctrlState.yaw);
+        inputLinear = vessel.ReferenceTransform.rotation * new Vector3(enableX ? vessel.ctrlState.X : 0f, enableZ ? vessel.ctrlState.Z : 0f, enableY ? vessel.ctrlState.Y : 0f);
+        inputAngular = vessel.ReferenceTransform.rotation * new Vector3(enablePitch ? vessel.ctrlState.pitch : 0f, enableRoll ? vessel.ctrlState.roll : 0f, enableYaw ? vessel.ctrlState.yaw : 0);
+        if (useThrottle)
+        {
+            inputLinear.y -= vessel.ctrlState.mainThrottle;
+            inputLinear.y = Mathf.Clamp(inputLinear.y, - 1f, 1f);
+        }
         precision = FlightInputHandler.fetch.precisionMode;
     }
 
@@ -97,22 +96,11 @@ public class ModuleRCSFX : ModuleRCS
             return;
         }
 
-
+        bool success = false;
         realISP = atmosphereCurve.Evaluate((float)vessel.staticPressure);
         thrustForces.Clear();
         if (isEnabled && part.isControllable)
         {
-            if (vessel.ActionGroups[KSPActionGroup.RCS] != rcs_active)
-            {
-                rcs_active = vessel.ActionGroups[KSPActionGroup.RCS];
-                part.Effect(engageEffectName, 1.0f);
-                part.Effect(runningEffectName, 0f);
-                foreach (FXGroup fx in thrusterFX)
-                {
-                    fx.setActive(false);
-                    fx.Power = 0f;
-                }
-            }
             if (vessel.ActionGroups[KSPActionGroup.RCS])
             {
                 Vector3 CoM = vessel.CoM + vessel.rb_velocity * Time.deltaTime;
@@ -122,7 +110,8 @@ public class ModuleRCSFX : ModuleRCS
                 {
                     if (thrusterTransforms[i].position != Vector3.zero)
                     {
-                        Vector3 torque = Vector3.Cross(inputAngular, (thrusterTransforms[i].position - CoM).normalized);
+                        Vector3 position = thrusterTransforms[i].transform.position;
+                        Vector3 torque = Vector3.Cross(inputAngular, (position - (CoM + vessel.rb_velocity * Time.deltaTime)).normalized);
                         Vector3 thruster;
                         if (useZaxis)
                             thruster = thrusterTransforms[i].forward;
@@ -138,86 +127,42 @@ public class ModuleRCSFX : ModuleRCS
                                 if (arm > 1.0f)
                                     thrust = thrust / arm;
                             }
-                            thrust = Mathf.Clamp(thrust, 0f, 1f);
+                            UpdatePropellantStatus();
+
+                            thrust = CalculateThrust(thrust, out success);
                             thrustForces.Add(thrust);
-
-                            if (!isJustForShow)
+                            if (success)
                             {
+                                if (!isJustForShow)
+                                {
+                                    Vector3 force = (-1 * thrust) * thruster;
 
-                                thrust = FuelLimitedThrust(thrust * thrusterPower);
+                                    part.Rigidbody.AddForceAtPosition(force, position, ForceMode.Force);
+                                }
 
-                                Vector3 force = (-1 * thrust) * thruster;
-                                Vector3 position = thrusterTransforms[i].transform.position;
-                                part.Rigidbody.AddForceAtPosition(force, position, ForceMode.Force);
+                                thrusterFX[i].Power = Mathf.Clamp(thrust / thrusterPower, 0.1f, 1f);
+                                if (effectPower < thrusterFX[i].Power)
+                                    effectPower = thrusterFX[i].Power;
+                                thrusterFX[i].setActive(thrust > 0f);
                             }
-
-                            thrusterFX[i].Power = Mathf.Clamp(thrust, 0.1f, 1f);
-                            if (effectPower < thrusterFX[i].Power)
-                                effectPower = thrusterFX[i].Power;
-                            thrusterFX[i].setActive(thrust > 0f);
-                        }
-                        else
-                        {
-                            thrusterFX[i].setActive(false);
-                            thrusterFX[i].Power = 0f;
                         }
                     }
+                    if (!success)
+                    {
+                        thrusterFX[i].setActive(false);
+                        thrusterFX[i].Power = 0f;
+                    }
                 }
-                part.Effect(runningEffectName, effectPower);
-            }
-        }
-        else
-        {
-            foreach (FXGroup fx in thrusterFX)
-            {
-                fx.setActive(false);
-                fx.Power = 0f;
             }
         }
 
     }
 
-    public void LoadPropellants(ConfigNode node)
+    private void UpdatePropellantStatus()
     {
-        propellants.Clear();
-        foreach (ConfigNode prop in node.GetNodes("PROPELLANT"))
-        {
-            Propellant fuel = new Propellant();
-            fuel.Load(prop);
-            propellants.Add(fuel);
-        }
-        SetupPropellant();
-    }
-
-    public void SetupPropellant()
-    {
-        mixtureFactor = 0.0f;
-        resourceMass = 0.0f;
-        foreach (Propellant fuel in propellants)
-        {
-            mixtureFactor += fuel.ratio;
-            resourceMass += fuel.ratio * PartResourceLibrary.Instance.GetDefinition(fuel.name).density;
-        }
-
-    }
-
-    public float FuelLimitedThrust(float thrust)
-    {
-        if (CheatOptions.InfiniteRCS)
-            return thrust;
-        foreach (Propellant propellant in propellants)
-        {
-
-            float fuelAmount = (thrust * Time.deltaTime) / (this.resourceMass * realISP * G);
-            float requestedAmount = fuelAmount * propellant.ratio;
-            float actualAmount = part.RequestResource(propellant.id, requestedAmount);
-            if (actualAmount < requestedAmount)
-            {
-                thrust *= actualAmount / requestedAmount;
-                part.Effect(flameoutEffectName, 1.0f);
-            }
-        }
-        return thrust;
+        if ((object)propellants != null)
+            foreach (Propellant p in propellants)
+                p.UpdateConnectedResources(part);
     }
 
 }
