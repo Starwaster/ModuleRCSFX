@@ -147,12 +147,15 @@ public class ModuleRCSFX : ModuleRCS
                             }
                         }
                     }
-                    if (!success)
-                    {
-                        thrusterFX[i].setActive(false);
-                        thrusterFX[i].Power = 0f;
-                    }
                 }
+            }
+        }
+        if (!success)
+        {
+            foreach (FXGroup fx in thrusterFX)
+            {
+                fx.setActive(false);
+                fx.Power = 0f;
             }
         }
 
