@@ -25,6 +25,11 @@ public class ModuleRCSFX : ModuleRCS
     [KSPField]
     public bool useThrottle = false;
 
+    [KSPField]
+    public bool correctThrust = true;
+
+    public float maxIsp;
+
 
     public float mixtureFactor;
 
@@ -39,6 +44,7 @@ public class ModuleRCSFX : ModuleRCS
         }
         base.OnLoad(node);
         G = 9.80665f;
+        maxIsp = atmosphereCurve.Evaluate(0f);
     }
 
     public override string GetInfo()
@@ -50,15 +56,7 @@ public class ModuleRCSFX : ModuleRCS
     public override void OnStart(StartState state)
     {
         base.OnStart(state);
-    }
-
-    public float getMaxFuelFlowFX(Propellant p, float isp)
-    {
-        isp *= G;
-        PartResourceDefinition d = PartResourceLibrary.Instance.GetDefinition(p.id);
-        if (d == null)
-            return float.NaN;
-        return p.ratio / mixtureDensity * this.thrusterPower / isp;
+        maxIsp = atmosphereCurve.Evaluate(0f);
     }
 
     Vector3 inputLinear;
@@ -118,6 +116,8 @@ public class ModuleRCSFX : ModuleRCS
                             thruster = thrusterTransforms[i].up;
                         float thrust = Mathf.Max(Vector3.Dot(thruster, torque), 0f);
                         thrust += Mathf.Max(Vector3.Dot(thruster, inputLinear), 0f);
+                        if (correctThrust)
+                            thrust *= realISP / maxIsp;
                         if (thrust > 0.0001f)
                         {
                             if (precision)
