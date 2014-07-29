@@ -47,9 +47,11 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>rd /s /q ..\..\Source\bin
-rd /s /q ..\..\Source\obj
-rem del "System.Core.dll"</PostBuildEvent>
+    <PostBuildEvent>rd /s /q Source\bin
+rd /s /q Source\obj
+rem del "System.Core.dll"
+xcopy /y ModuleRCSFX.dll ..\..\..\RealismOverhaul\ModuleRCSFX\Plugins\*
+xcopy /y ..\Readme_MRCSFX.txt ..\..\..\RealismOverhaul\ModuleRCSFX\*</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
