@@ -35,10 +35,10 @@ public class ModuleRCSFX : ModuleRCS
 
     public override void OnLoad(ConfigNode node)
     {
-        if (!node.HasNode("PROPELLANT"))
+        if (!node.HasNode("PROPELLANT") && node.HasValue("resourceName"))
         {
             ConfigNode c = new ConfigNode("PROPELLANT");
-            c.SetValue("name", resourceName);
+            c.SetValue("name", node.GetValue("resourceName"));
             c.SetValue("ratio", "1.0");
             node.AddNode(c);
         }
