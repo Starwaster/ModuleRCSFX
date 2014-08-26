@@ -47,8 +47,8 @@
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>rd /s /q Source\bin
-rd /s /q Source\obj
+    <PostBuildEvent>rem rd /s /q Source\bin
+rem rd /s /q Source\obj
 rem del "System.Core.dll"
 xcopy /y ModuleRCSFX.dll ..\..\..\RealismOverhaul\ModuleRCSFX\Plugins\*
 xcopy /y ..\Readme_MRCSFX.txt ..\..\..\RealismOverhaul\ModuleRCSFX\*</PostBuildEvent>
