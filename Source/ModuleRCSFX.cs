@@ -46,11 +46,13 @@ public class ModuleRCSFX : ModuleRCS
 
     public override void OnLoad(ConfigNode node)
     {
-        if (!node.HasNode("PROPELLANT") && node.HasValue("resourceName"))
+        if (!node.HasNode("PROPELLANT") && node.HasValue("resourceName") && (propellants == null || propellants.Count == 0))
         {
             ConfigNode c = new ConfigNode("PROPELLANT");
             c.SetValue("name", node.GetValue("resourceName"));
             c.SetValue("ratio", "1.0");
+            if (node.HasValue("resourceFlowMode"))
+                c.SetValue("resourceFlowMode", node.GetValue("resourceFlowMode"));
             node.AddNode(c);
         }
         base.OnLoad(node);
@@ -132,7 +134,7 @@ public class ModuleRCSFX : ModuleRCS
                     if (thrusterTransforms[i].position != Vector3.zero)
                     {
                         Vector3 position = thrusterTransforms[i].transform.position;
-                        Vector3 torque = Vector3.Cross(inputAngular, (position - (CoM + vessel.rb_velocity * Time.deltaTime)).normalized);
+                        Vector3 torque = Vector3.Cross(inputAngular, (position - CoM).normalized);
                         Vector3 thruster;
                         if (useZaxis)
                             thruster = thrusterTransforms[i].forward;
@@ -147,7 +149,7 @@ public class ModuleRCSFX : ModuleRCS
                             thrust *= realISP / maxIsp;
                         if (thrust > 0.0001f)
                         {
-                            if (precision)
+                            if (precision && !fullThrust)
                             {
                                 float arm = GetLeverDistance(-thruster, CoM);
                                 if (arm > 1.0f)
