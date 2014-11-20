@@ -39,6 +39,9 @@ public class ModuleRCSFX : ModuleRCS
     [KSPField]
     public bool correctThrust = true;
 
+    [KSPField(guiActive = true)]
+    public float curThrust = 0f;
+
     public float maxIsp;
 
 
@@ -69,7 +72,6 @@ public class ModuleRCSFX : ModuleRCS
     public override void OnStart(StartState state)
     {
         base.OnStart(state);
-        maxIsp = atmosphereCurve.Evaluate(0f);
     }
 
     Vector3 inputLinear;
@@ -93,6 +95,7 @@ public class ModuleRCSFX : ModuleRCS
 
     new public void FixedUpdate()
     {
+        maxIsp = atmosphereCurve.Evaluate(0f);
         if (HighLogic.LoadedSceneIsEditor)
             return;
 
@@ -107,6 +110,7 @@ public class ModuleRCSFX : ModuleRCS
         }
 
         bool success = false;
+        curThrust = 0f;
         realISP = atmosphereCurve.Evaluate((float)vessel.staticPressure);
         thrustForces.Clear();
         if (isEnabled && part.isControllable)
@@ -142,12 +146,12 @@ public class ModuleRCSFX : ModuleRCS
                             thruster = thrusterTransforms[i].up;
                         float thrust = Mathf.Max(Vector3.Dot(thruster, torque), 0f);
                         thrust += Mathf.Max(Vector3.Dot(thruster, inputLinear), 0f);
-                        if (thrust > 0 && fullThrust)
+                        if (thrust > 0f && fullThrust)
                             thrust = thrusterPower * ( precision ? 0.1f : 1f);
 
                         if (correctThrust)
                             thrust *= realISP / maxIsp;
-                        if (thrust > 0.0001f)
+                        if (thrust > 0f)
                         {
                             if (precision && !fullThrust)
                             {
@@ -155,17 +159,20 @@ public class ModuleRCSFX : ModuleRCS
                                 if (arm > 1.0f)
                                     thrust = thrust / arm;
                             }
-                            thrust = Mathf.Clamp(thrust, 0f, thrusterPower);
+                            if (thrust > thrusterPower)
+                                thrust = thrusterPower;
                             UpdatePropellantStatus();
                             thrust = CalculateThrust(thrust, out success);
                             thrustForces.Add(thrust);
                             if (success)
                             {
+                                curThrust += thrust;
                                 if (!isJustForShow)
                                 {
                                     Vector3 force = (-1 * thrust) * thruster;
 
                                     part.Rigidbody.AddForceAtPosition(force, position, ForceMode.Force);
+                                    Debug.Log("Part " + part.name + " adding force " + force.x + "," + force.y + "," + force.z + " at " + position);
                                 }
 
                                 thrusterFX[i].Power = Mathf.Clamp(thrust / thrusterPower, 0.1f, 1f);
@@ -173,8 +180,17 @@ public class ModuleRCSFX : ModuleRCS
                                     effectPower = thrusterFX[i].Power;
                                 thrusterFX[i].setActive(thrust > 0f);
                             }
-                            else if (! (flameoutEffectName.Equals("")))
-                                part.Effect(flameoutEffectName, 1.0f);
+                            else
+                            {
+                                thrusterFX[i].Power = 0f;
+
+                                if (!(flameoutEffectName.Equals("")))
+                                    part.Effect(flameoutEffectName, 1.0f);
+                            }
+                        }
+                        else
+                        {
+                            thrusterFX[i].Power = 0f;
                         }
                     }
                 }
@@ -198,6 +214,17 @@ public class ModuleRCSFX : ModuleRCS
         if ((object)propellants != null)
             foreach (Propellant p in propellants)
                 p.UpdateConnectedResources(part);
+    }
+
+    new public float CalculateThrust(float totalForce, out bool success)
+    {
+		double mass = (double)(totalForce / (realISP * G)) * TimeWarp.fixedDeltaTime;
+		double propAvailable = 1.0;
+		if (!CheatOptions.InfiniteFuel)
+            propAvailable = RequestPropellant(mass);
+        totalForce = (float)(totalForce * propAvailable);
+        success = (totalForce  > 0f);
+        return totalForce;
     }
 
 }

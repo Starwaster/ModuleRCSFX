@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("DeadlyReentry")]
+[assembly: AssemblyTitle("ModuleRCSFX")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Multiversal Mechatronics")]
-[assembly: AssemblyProduct("DeadlyReentry")]
-[assembly: AssemblyCopyright("Copyright © Multiversal Mechatronics 2013")]
+[assembly: AssemblyCompany("NathanKell")]
+[assembly: AssemblyProduct("ModuleRCSFX")]
+[assembly: AssemblyCopyright("Copyright © NathanKell 2014 CC-BY-SA")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -33,4 +33,4 @@ using System.Runtime.InteropServices;
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
 [assembly: AssemblyVersion("0.3.*")]
-[assembly: AssemblyFileVersion("0.3.1.0")]
+[assembly: AssemblyFileVersion("0.3.2.0")]
