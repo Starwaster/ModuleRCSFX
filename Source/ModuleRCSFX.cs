@@ -39,7 +39,7 @@ public class ModuleRCSFX : ModuleRCS
     [KSPField]
     public bool correctThrust = true;
 
-    [KSPField(guiActive = true)]
+    //[KSPField(guiActive = true)]
     public float curThrust = 0f;
 
     public float maxIsp;
@@ -172,7 +172,7 @@ public class ModuleRCSFX : ModuleRCS
                                     Vector3 force = (-1 * thrust) * thruster;
 
                                     part.Rigidbody.AddForceAtPosition(force, position, ForceMode.Force);
-                                    Debug.Log("Part " + part.name + " adding force " + force.x + "," + force.y + "," + force.z + " at " + position);
+                                    //Debug.Log("Part " + part.name + " adding force " + force.x + "," + force.y + "," + force.z + " at " + position);
                                 }
 
                                 thrusterFX[i].Power = Mathf.Clamp(thrust / thrusterPower, 0.1f, 1f);
