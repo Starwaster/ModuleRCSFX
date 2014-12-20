@@ -44,6 +44,21 @@ public class ModuleRCSFX : ModuleRCS
 
     public float maxIsp;
 
+    //[KSPField(guiActive = true)]
+    float inputAngularX;
+    //[KSPField(guiActive = true)]
+    float inputAngularY;
+    //[KSPField(guiActive = true)]
+    float inputAngularZ;
+    //[KSPField(guiActive = true)]
+    float inputLinearX;
+    //[KSPField(guiActive = true)]
+    float inputLinearY;
+    //[KSPField(guiActive = true)]
+    float inputLinearZ;
+
+    [KSPField]
+    float EPSILON = 0.05f; // 5% control actuation
 
     public float mixtureFactor;
 
@@ -113,6 +128,13 @@ public class ModuleRCSFX : ModuleRCS
         curThrust = 0f;
         realISP = atmosphereCurve.Evaluate((float)vessel.staticPressure);
         thrustForces.Clear();
+        inputAngularX = inputAngular.x;
+        inputAngularY = inputAngular.y;
+        inputAngularZ = inputAngular.z;
+        inputLinearX = inputLinear.x;
+        inputLinearY = inputLinear.y;
+        inputLinearZ = inputLinear.z;
+
         if (isEnabled && part.isControllable)
         {
             if (vessel.ActionGroups[KSPActionGroup.RCS] != rcs_active)
@@ -138,14 +160,21 @@ public class ModuleRCSFX : ModuleRCS
                     if (thrusterTransforms[i].position != Vector3.zero)
                     {
                         Vector3 position = thrusterTransforms[i].transform.position;
-                        Vector3 torque = Vector3.Cross(inputAngular, (position - CoM).normalized);
+                        Vector3 torque = Vector3.zero;
+                        if(inputAngular.x > EPSILON || inputAngular.x < -EPSILON ||
+                            inputAngular.y > EPSILON || inputAngular.y < -EPSILON ||
+                            inputAngular.z > EPSILON || inputAngular.z < -EPSILON)
+                            torque = Vector3.Cross(inputAngular, (position - CoM).normalized);
                         Vector3 thruster;
                         if (useZaxis)
                             thruster = thrusterTransforms[i].forward;
                         else
                             thruster = thrusterTransforms[i].up;
                         float thrust = Mathf.Max(Vector3.Dot(thruster, torque), 0f);
-                        thrust += Mathf.Max(Vector3.Dot(thruster, inputLinear), 0f);
+                        if (inputLinear.x > EPSILON || inputLinear.x < -EPSILON ||
+                            inputLinear.y > EPSILON || inputLinear.y < -EPSILON ||
+                            inputLinear.z > EPSILON || inputLinear.z < -EPSILON)
+                            thrust += Mathf.Max(Vector3.Dot(thruster, inputLinear), 0f);
                         if (thrust > 0f && fullThrust)
                             thrust = thrusterPower * ( precision ? 0.1f : 1f);
 
@@ -223,8 +252,9 @@ public class ModuleRCSFX : ModuleRCS
 		if (!CheatOptions.InfiniteFuel)
             propAvailable = RequestPropellant(mass);
         totalForce = (float)(totalForce * propAvailable);
-        success = (totalForce  > 0f);
+        success = (totalForce  > 0.000001f);
         return totalForce;
     }
 
 }
+ 
