@@ -36,10 +36,10 @@ public class ModuleRCSFX : ModuleRCS
     [KSPField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Port/Stbd"),
             UI_Toggle(disabledText = "Off", enabledText = "On")]
     public bool enableX = true;
-    [KSPField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Fore/Aft"),
+    [KSPField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Dorsal/Ventral"),
             UI_Toggle(disabledText = "Off", enabledText = "On")]
     public bool enableY = true;
-    [KSPField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Dorsal/Ventral"),
+    [KSPField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Fore/Aft"),
             UI_Toggle(disabledText = "Off", enabledText = "On")]
     public bool enableZ = true;
 
