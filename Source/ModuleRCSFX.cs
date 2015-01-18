@@ -6,7 +6,7 @@ using KSP;
 public class ModuleRCSFX : ModuleRCS
 {
     [KSPField]
-    public bool fullThrust = false; // always use full thrust
+    public bool fullThrust = true; // always use full thrust
 
     [KSPField()]
     string runningEffectName = "";
@@ -135,7 +135,7 @@ public class ModuleRCSFX : ModuleRCS
         inputLinearY = inputLinear.y;
         inputLinearZ = inputLinear.z;
 
-        if (isEnabled && part.isControllable)
+        if (rcsEnabled && part.isControllable)
         {
             if (vessel.ActionGroups[KSPActionGroup.RCS] != rcs_active)
             {
