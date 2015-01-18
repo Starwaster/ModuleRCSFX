@@ -64,13 +64,13 @@ public class ModuleRCSFX : ModuleRCS
 
     public override void OnLoad(ConfigNode node)
     {
-        if (!node.HasNode("PROPELLANT") && node.HasValue("resourceName") && (propellants == null || propellants.Count == 0))
+        if (!node.HasNode("PROPELLANT") && node.HasValue("resourceName"))
         {
             ConfigNode c = new ConfigNode("PROPELLANT");
-            c.SetValue("name", node.GetValue("resourceName"));
-            c.SetValue("ratio", "1.0");
+            c.AddValue("name", node.GetValue("resourceName"));
+            c.AddValue("ratio", "1.0");
             if (node.HasValue("resourceFlowMode"))
-                c.SetValue("resourceFlowMode", node.GetValue("resourceFlowMode"));
+                c.AddValue("resourceFlowMode", node.GetValue("resourceFlowMode"));
             node.AddNode(c);
         }
         base.OnLoad(node);
@@ -164,7 +164,8 @@ public class ModuleRCSFX : ModuleRCS
                         if(inputAngular.x > EPSILON || inputAngular.x < -EPSILON ||
                             inputAngular.y > EPSILON || inputAngular.y < -EPSILON ||
                             inputAngular.z > EPSILON || inputAngular.z < -EPSILON)
-                            torque = Vector3.Cross(inputAngular, (position - CoM).normalized);
+                            torque = Vector3.Cross(inputAngular.normalized, (position - CoM).normalized);
+
                         Vector3 thruster;
                         if (useZaxis)
                             thruster = thrusterTransforms[i].forward;
@@ -174,25 +175,31 @@ public class ModuleRCSFX : ModuleRCS
                         if (inputLinear.x > EPSILON || inputLinear.x < -EPSILON ||
                             inputLinear.y > EPSILON || inputLinear.y < -EPSILON ||
                             inputLinear.z > EPSILON || inputLinear.z < -EPSILON)
-                            thrust += Mathf.Max(Vector3.Dot(thruster, inputLinear), 0f);
-                        if (thrust > 0f && fullThrust)
-                            thrust = thrusterPower * ( precision ? 0.1f : 1f);
+                            thrust += Mathf.Max(Vector3.Dot(thruster.normalized, inputLinear.normalized), 0f);
+                        // thrust should now be normalized 0-1.
+                        thrust *= thrusterPower;
 
                         if (correctThrust)
                             thrust *= realISP / maxIsp;
+
                         if (thrust > 0f)
                         {
-                            if (precision && !fullThrust)
+                            // old precision code
+                            /*if (precision && !fullThrust)
                             {
                                 float arm = GetLeverDistance(-thruster, CoM);
                                 if (arm > 1.0f)
                                     thrust = thrust / arm;
-                            }
-                            if (thrust > thrusterPower)
+                            }*/
+                            if (thrust > thrusterPower || fullThrust)
                                 thrust = thrusterPower;
+                            if (precision)
+                                thrust *= 0.1f;
+
                             UpdatePropellantStatus();
                             thrust = CalculateThrust(thrust, out success);
                             thrustForces.Add(thrust);
+                            
                             if (success)
                             {
                                 curThrust += thrust;
