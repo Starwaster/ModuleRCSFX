@@ -19,18 +19,28 @@ public class ModuleRCSFX : ModuleRCS
 
     [KSPField()]
     public bool useZaxis = false;
-    [KSPField]
+
+    [KSPField(guiActiveEditor = true)]
+    public string RCS = "Enable/Disable for:";
+
+    [KSPField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Yaw"),
+            UI_Toggle(disabledText = "Off", enabledText = "On")]
     public bool enableYaw = true;
-    [KSPField]
+    [KSPField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Pitch"),
+            UI_Toggle(disabledText = "Off", enabledText = "On")]
     public bool enablePitch = true;
-    [KSPField]
+    [KSPField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Roll"),
+            UI_Toggle(disabledText = "Off", enabledText = "On")]
     public bool enableRoll = true;
 
-    [KSPField]
+    [KSPField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Port/Stbd"),
+            UI_Toggle(disabledText = "Off", enabledText = "On")]
     public bool enableX = true;
-    [KSPField]
+    [KSPField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Fore/Aft"),
+            UI_Toggle(disabledText = "Off", enabledText = "On")]
     public bool enableY = true;
-    [KSPField]
+    [KSPField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Dorsal/Ventral"),
+            UI_Toggle(disabledText = "Off", enabledText = "On")]
     public bool enableZ = true;
 
     [KSPField]
