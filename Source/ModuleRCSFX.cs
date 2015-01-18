@@ -6,7 +6,7 @@ using KSP;
 public class ModuleRCSFX : ModuleRCS
 {
     [KSPField]
-    public bool fullThrust = true; // always use full thrust
+    public bool fullThrust = false; // always use full thrust
 
     [KSPField()]
     string runningEffectName = "";
