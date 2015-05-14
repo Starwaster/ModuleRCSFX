@@ -5,19 +5,27 @@ using KSP;
 
 public class ModuleRCSFX : ModuleRCS
 {
+    /// <summary>
+    /// Always use the full thrust of the thruster, don't decrease it when off-alignment
+    /// </summary>
     [KSPField]
     public bool fullThrust = false; // always use full thrust
 
-    [KSPField()]
+    [KSPField]
+    public bool useEffects = false;
+
+    [KSPField]
     string runningEffectName = "";
-    [KSPField()]
+    [KSPField]
     string engageEffectName = "";
-    [KSPField()]
+    [KSPField]
+    string disengageEffectName = "";
+    [KSPField]
     string flameoutEffectName = "";
 
     public bool rcs_active;
 
-    [KSPField()]
+    [KSPField]
     public bool useZaxis = false;
 
     [KSPField(guiActiveEditor = true)]
@@ -46,13 +54,27 @@ public class ModuleRCSFX : ModuleRCS
     [KSPField]
     public bool useThrottle = false;
 
+    /// <summary>
+    /// Stock KSP lever compensation in precision mode (instead of just reduced thrsut
+    /// Defaults to false (reduce thrust uniformly
+    /// </summary>
     [KSPField]
-    public bool correctThrust = true;
+    public bool useLever = false;
+
+    /// <summary>
+    /// The factor by which thrust is multiplied in precision mode (if lever compensation is off
+    /// </summary>
+    [KSPField]
+    public float precisionFactor = 0.1f;
 
     //[KSPField(guiActive = true)]
     public float curThrust = 0f;
 
-    public float maxIsp;
+    /// <summary>
+    /// Fuel flow in tonnes/sec
+    /// </summary>
+    public double fuelFlow = 0f;
+
 
     //[KSPField(guiActive = true)]
     float inputAngularX;
@@ -67,6 +89,19 @@ public class ModuleRCSFX : ModuleRCS
     //[KSPField(guiActive = true)]
     float inputLinearZ;
 
+    private Vector3 inputLinear;
+    private Vector3 inputAngular;
+    private bool precision;
+    private double exhaustVel = 0d;
+
+    public double flowMult = 1d;
+    public double ispMult = 1d;
+
+    private double invG = 1d / 9.80665d;
+
+    /// <summary>
+    /// If control actuation < this, ignore.
+    /// </summary>
     [KSPField]
     float EPSILON = 0.05f; // 5% control actuation
 
@@ -85,7 +120,7 @@ public class ModuleRCSFX : ModuleRCS
         }
         base.OnLoad(node);
         G = 9.80665f;
-        maxIsp = atmosphereCurve.Evaluate(0f);
+        fuelFlow = (double)thrusterPower / (double)atmosphereCurve.Evaluate(0f) * invG;
     }
 
     public override string GetInfo()
@@ -96,12 +131,20 @@ public class ModuleRCSFX : ModuleRCS
 
     public override void OnStart(StartState state)
     {
-        base.OnStart(state);
+        if (useEffects) // use EFFECTS so don't do the base startup. That means we have to do this ourselves.
+        {
+            part.stackIcon.SetIcon(DefaultIcons.RCS_MODULE);
+            part.stackIconGrouping = StackIconGrouping.SAME_TYPE;
+            thrusterTransforms = new List<Transform>(part.FindModelTransforms(thrusterTransformName));
+            if (thrusterTransforms == null || thrusterTransforms.Count == 0)
+            {
+                Debug.Log("RCS module unable to find any transforms in part named " + thrusterTransformName);
+            }
+    
+        }
+        else
+            base.OnStart(state);
     }
-
-    Vector3 inputLinear;
-    Vector3 inputAngular;
-    bool precision;
 
     new public void Update()
     {
@@ -115,123 +158,145 @@ public class ModuleRCSFX : ModuleRCS
             inputLinear.y -= vessel.ctrlState.mainThrottle;
             inputLinear.y = Mathf.Clamp(inputLinear.y, - 1f, 1f);
         }
-        precision = FlightInputHandler.fetch.precisionMode;
-    }
 
-    new public void FixedUpdate()
-    {
-        maxIsp = atmosphereCurve.Evaluate(0f);
-        if (HighLogic.LoadedSceneIsEditor)
-            return;
-
-        if (TimeWarp.CurrentRate > 1.0f && TimeWarp.WarpMode == TimeWarp.Modes.HIGH)
-        {
-            foreach (FXGroup fx in thrusterFX)
-            {
-                fx.setActive(false);
-                fx.Power = 0f;
-            }
-            return;
-        }
-
-        bool success = false;
-        curThrust = 0f;
-        realISP = atmosphereCurve.Evaluate((float)vessel.staticPressure);
-        thrustForces.Clear();
+        // Epsilon checks (min values)
+        float EPSILON2 = EPSILON * EPSILON;
         inputAngularX = inputAngular.x;
         inputAngularY = inputAngular.y;
         inputAngularZ = inputAngular.z;
         inputLinearX = inputLinear.x;
         inputLinearY = inputLinear.y;
         inputLinearZ = inputLinear.z;
+        if (inputAngularX * inputAngularX < EPSILON2)
+            inputAngularX = 0f;
+        if (inputAngularY * inputAngularY < EPSILON2)
+            inputAngularY = 0f;
+        if (inputAngularZ * inputAngularZ < EPSILON2)
+            inputAngularZ = 0f;
+        if (inputLinearX * inputLinearX < EPSILON2)
+            inputLinearX = 0f;
+        if (inputLinearY * inputLinearY < EPSILON2)
+            inputLinearY = 0f;
+        if (inputLinearZ * inputLinearZ < EPSILON2)
+            inputLinearZ = 0f;
+        inputLinear.x = inputLinearX;
+        inputLinear.y = inputLinearY;
+        inputLinear.z = inputLinearZ;
+        inputAngular.x = inputAngularX;
+        inputAngular.y = inputAngularY;
+        inputAngular.z = inputAngularZ;
 
-        if (rcsEnabled && part.isControllable)
+        precision = FlightInputHandler.fetch.precisionMode;
+    }
+
+    new public void FixedUpdate()
+    {
+        if (HighLogic.LoadedSceneIsEditor)
+            return;
+        int fxC = thrusterFX.Count;
+        if (TimeWarp.CurrentRate > 1.0f && TimeWarp.WarpMode == TimeWarp.Modes.HIGH)
+        {
+            
+            for(int i = 0; i < fxC; ++i)
+            {
+                FXGroup fx = thrusterFX[i];
+                fx.setActive(false);
+                fx.Power = 0f;
+            }
+            return;
+        }
+
+        // set starting params for loop
+        bool success = false;
+        curThrust = 0f;
+
+        // set Isp/EV
+        realISP = atmosphereCurve.Evaluate((float)(vessel.staticPressurekPa * PhysicsGlobals.KpaToAtmospheres));
+        exhaustVel = (double)realISP * (double)G * ispMult;
+
+        thrustForces.Clear();
+
+        if (rcsEnabled && !part.ShieldedFromAirstream)
         {
             if (vessel.ActionGroups[KSPActionGroup.RCS] != rcs_active)
             {
                 rcs_active = vessel.ActionGroups[KSPActionGroup.RCS];
-                if(!(engageEffectName.Equals("")))
-                    part.Effect(engageEffectName, 1.0f);
-                if(!(runningEffectName.Equals("")))
-                    part.Effect(runningEffectName, 0f);
-                foreach (FXGroup fx in thrusterFX)
-                {
-                    fx.setActive(false);
-                    fx.Power = 0f;
-                }
             }
-            if (vessel.ActionGroups[KSPActionGroup.RCS])
+            if (vessel.ActionGroups[KSPActionGroup.RCS] && (inputAngular != Vector3.zero  || inputLinear != Vector3.zero))
             {
-                Vector3 CoM = vessel.CoM + vessel.rb_velocity * Time.deltaTime;
+
+                // rb_velocity should include timewarp, right?
+                Vector3 CoM = vessel.CoM + vessel.rb_velocity * Time.fixedDeltaTime;
 
                 float effectPower = 0f;
-                for (int i = 0; i < thrusterTransforms.Count; i++)
+                int xformCount = thrusterTransforms.Count;
+                for (int i = 0; i < xformCount; ++i)
                 {
-                    if (thrusterTransforms[i].position != Vector3.zero)
+                    Transform xform = thrusterTransforms[i];
+                    if (xform.position != Vector3.zero)
                     {
-                        Vector3 position = thrusterTransforms[i].transform.position;
-                        Vector3 torque = Vector3.zero;
-                        if(inputAngular.x > EPSILON || inputAngular.x < -EPSILON ||
-                            inputAngular.y > EPSILON || inputAngular.y < -EPSILON ||
-                            inputAngular.z > EPSILON || inputAngular.z < -EPSILON)
-                            torque = Vector3.Cross(inputAngular.normalized, (position - CoM).normalized);
+                        Vector3 position = xform.position;
+                        Vector3 torque = Vector3.Cross(inputAngular.normalized, (position - CoM).normalized);
 
                         Vector3 thruster;
                         if (useZaxis)
-                            thruster = thrusterTransforms[i].forward;
+                            thruster = xform.forward;
                         else
-                            thruster = thrusterTransforms[i].up;
+                            thruster = xform.up;
                         float thrust = Mathf.Max(Vector3.Dot(thruster, torque), 0f);
-                        if (inputLinear.x > EPSILON || inputLinear.x < -EPSILON ||
-                            inputLinear.y > EPSILON || inputLinear.y < -EPSILON ||
-                            inputLinear.z > EPSILON || inputLinear.z < -EPSILON)
-                            thrust += Mathf.Max(Vector3.Dot(thruster.normalized, inputLinear.normalized), 0f);
-                        // thrust should now be normalized 0-1.
-                        thrust *= thrusterPower;
+                        thrust += Mathf.Max(Vector3.Dot(thruster, inputLinear.normalized), 0f);
 
-                        if (correctThrust)
-                            thrust *= realISP / maxIsp;
+                        // thrust should now be normalized 0-1.
 
                         if (thrust > 0f)
                         {
-                            // old precision code
-                            /*if (precision && !fullThrust)
-                            {
-                                float arm = GetLeverDistance(-thruster, CoM);
-                                if (arm > 1.0f)
-                                    thrust = thrust / arm;
-                            }*/
-                            if (thrust > thrusterPower || fullThrust)
-                                thrust = thrusterPower;
+                            if (fullThrust)
+                                thrust = 1f;
+
                             if (precision)
-                                thrust *= 0.1f;
+                            {
+                                if (useLever)
+                                {
+                                    //leverDistance = GetLeverDistanceOriginal(predictedCOM);
+                                    float leverDistance = GetLeverDistance(-thruster, CoM);
+
+                                    if (leverDistance > 1)
+                                    {
+                                        thrust /= leverDistance;
+                                    }
+                                }
+                                else
+                                {
+                                    thrust *= precisionFactor;
+                                }
+                            }
 
                             UpdatePropellantStatus();
-                            thrust = CalculateThrust(thrust, out success);
-                            thrustForces.Add(thrust);
+                            float thrustForce = CalculateThrust(thrust, out success);
                             
                             if (success)
                             {
                                 curThrust += thrust;
+                                thrustForces.Add(thrustForce);
                                 if (!isJustForShow)
                                 {
-                                    Vector3 force = (-1 * thrust) * thruster;
+                                    Vector3 force = -thrustForce * thruster;
 
                                     part.Rigidbody.AddForceAtPosition(force, position, ForceMode.Force);
                                     //Debug.Log("Part " + part.name + " adding force " + force.x + "," + force.y + "," + force.z + " at " + position);
                                 }
 
-                                thrusterFX[i].Power = Mathf.Clamp(thrust / thrusterPower, 0.1f, 1f);
+                                thrusterFX[i].Power = Mathf.Clamp(thrust, 0.1f, 1f);
                                 if (effectPower < thrusterFX[i].Power)
                                     effectPower = thrusterFX[i].Power;
-                                thrusterFX[i].setActive(thrust > 0f);
+                                thrusterFX[i].setActive(thrustForce > 0f);
                             }
                             else
                             {
                                 thrusterFX[i].Power = 0f;
 
-                                if (!(flameoutEffectName.Equals("")))
-                                    part.Effect(flameoutEffectName, 1.0f);
+                                /*if (!(flameoutEffectName.Equals("")))
+                                    part.Effect(flameoutEffectName, 1.0f);*/
                             }
                         }
                         else
@@ -240,14 +305,15 @@ public class ModuleRCSFX : ModuleRCS
                         }
                     }
                 }
-                if(!(runningEffectName.Equals("")))
-                    part.Effect(runningEffectName, effectPower);
+                /*if(!(runningEffectName.Equals("")))
+                    part.Effect(runningEffectName, effectPower);*/
             }
         }
         if (!success)
         {
-            foreach (FXGroup fx in thrusterFX)
+            for (int i = 0; i < fxC; ++i)
             {
+                FXGroup fx = thrusterFX[i];
                 fx.setActive(false);
                 fx.Power = 0f;
             }
@@ -258,18 +324,25 @@ public class ModuleRCSFX : ModuleRCS
     private void UpdatePropellantStatus()
     {
         if ((object)propellants != null)
-            foreach (Propellant p in propellants)
-                p.UpdateConnectedResources(part);
+        {
+            int pCount = propellants.Count;
+            for (int i = 0; i < pCount; ++i )
+                propellants[i].UpdateConnectedResources(part);
+        }
     }
 
     new public float CalculateThrust(float totalForce, out bool success)
     {
-		double mass = (double)(totalForce / (realISP * G)) * TimeWarp.fixedDeltaTime;
-		double propAvailable = 1.0;
-		if (!CheatOptions.InfiniteFuel)
-            propAvailable = RequestPropellant(mass);
-        totalForce = (float)(totalForce * propAvailable);
-        success = (totalForce  > 0.000001f);
+		double massFlow = flowMult * fuelFlow * (double)totalForce * TimeWarp.fixedDeltaTime;
+		
+        double propAvailable = 1.0d;
+
+		if (!CheatOptions.InfiniteRCS)
+            propAvailable = RequestPropellant(massFlow);
+
+        totalForce = (float)(massFlow * exhaustVel * propAvailable);
+
+        success = (propAvailable > 0f); // had some fuel
         return totalForce;
     }
 

@@ -37,11 +37,11 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\..\..\..\..\Games\KSP_090clean\KSP_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\Games\KSP_win1\KSP_Data\Managed\Assembly-CSharp.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>..\..\..\..\..\..\Games\KSP_090clean\KSP_Data\Managed\UnityEngine.dll</HintPath>
+      <HintPath>..\..\..\..\..\..\Games\KSP_win1\KSP_Data\Managed\UnityEngine.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
@@ -50,8 +50,8 @@
     <PostBuildEvent>rem rd /s /q Source\bin
 rem rd /s /q Source\obj
 rem del "System.Core.dll"
-xcopy /y ModuleRCSFX.dll ..\..\..\RealismOverhaul\ModuleRCSFX\Plugins\*
-xcopy /y ..\Readme_MRCSFX.txt ..\..\..\RealismOverhaul\ModuleRCSFX\*</PostBuildEvent>
+xcopy /y ModuleRCSFX.dll ..\..\..\RealismOverhaul\GameData\ModuleRCSFX\Plugins\*
+xcopy /y ..\Readme_MRCSFX.txt ..\..\..\RealismOverhaul\GameData\ModuleRCSFX\*</PostBuildEvent>
   </PropertyGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
