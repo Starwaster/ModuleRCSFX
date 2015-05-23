@@ -282,7 +282,6 @@ public class ModuleRCSFX : ModuleRCS
                             
                             if (success)
                             {
-                                thrustForce *= thrusterPower;
                                 curThrust += thrustForce;
                                 thrustForces.Add(thrustForce);
                                 if (!isJustForShow)
@@ -345,7 +344,7 @@ public class ModuleRCSFX : ModuleRCS
         double propAvailable = 1.0d;
 
 		if (!CheatOptions.InfiniteRCS)
-            propAvailable = RequestPropellant(massFlow * thrusterPower * TimeWarp.fixedDeltaTime);
+            propAvailable = RequestPropellant(massFlow * TimeWarp.fixedDeltaTime);
 
         totalForce = (float)(massFlow * exhaustVel * propAvailable);
 
