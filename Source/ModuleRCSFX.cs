@@ -11,6 +11,12 @@ public class ModuleRCSFX : ModuleRCS
     [KSPField]
     public bool fullThrust = false; // always use full thrust
 
+    /// <summary>
+    /// If fullThrust = true, if thrust ratio is < this, do not apply full thrust (leave thrust unchanged)
+    /// </summary>
+    [KSPField]
+    public float fullThrustMin = 0.2f; // if thrust amount from dots < this, don't do full thrust
+
     [KSPField]
     public bool useEffects = false;
 
@@ -250,7 +256,7 @@ public class ModuleRCSFX : ModuleRCS
 
                         if (thrust > 0f)
                         {
-                            if (fullThrust)
+                            if (fullThrust && thrust >= fullThrustMin)
                                 thrust = 1f;
 
                             if (precision)
@@ -276,7 +282,8 @@ public class ModuleRCSFX : ModuleRCS
                             
                             if (success)
                             {
-                                curThrust += thrust;
+                                thrustForce *= thrusterPower;
+                                curThrust += thrustForce;
                                 thrustForces.Add(thrustForce);
                                 if (!isJustForShow)
                                 {
@@ -333,12 +340,12 @@ public class ModuleRCSFX : ModuleRCS
 
     new public float CalculateThrust(float totalForce, out bool success)
     {
-		double massFlow = flowMult * fuelFlow * (double)totalForce * TimeWarp.fixedDeltaTime;
+        double massFlow = flowMult * fuelFlow * (double)totalForce;
 		
         double propAvailable = 1.0d;
 
 		if (!CheatOptions.InfiniteRCS)
-            propAvailable = RequestPropellant(massFlow);
+            propAvailable = RequestPropellant(massFlow * thrusterPower * TimeWarp.fixedDeltaTime);
 
         totalForce = (float)(massFlow * exhaustVel * propAvailable);
 
