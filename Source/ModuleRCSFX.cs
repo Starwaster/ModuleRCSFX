@@ -158,7 +158,7 @@ public class ModuleRCSFX : ModuleRCS
             return;
 
         float ctrlZ = vessel.ctrlState.Z;
-        if (useThrottle)
+        if (useThrottle && ctrlZ < EPSILON && ctrlZ > -EPSILON) // only do this if not specifying axial thrust.
         {
             ctrlZ -= vessel.ctrlState.mainThrottle;
             ctrlZ = Mathf.Clamp(ctrlZ, -1f, 1f);
