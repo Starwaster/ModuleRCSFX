@@ -157,13 +157,14 @@ public class ModuleRCSFX : ModuleRCS
         if (this.part.vessel == null)
             return;
 
-        inputLinear = vessel.ReferenceTransform.rotation * new Vector3(enableX ? vessel.ctrlState.X : 0f, enableZ ? vessel.ctrlState.Z : 0f, enableY ? vessel.ctrlState.Y : 0f);
-        inputAngular = vessel.ReferenceTransform.rotation * new Vector3(enablePitch ? vessel.ctrlState.pitch : 0f, enableRoll ? vessel.ctrlState.roll : 0f, enableYaw ? vessel.ctrlState.yaw : 0);
+        float ctrlZ = vessel.ctrlState.Z;
         if (useThrottle)
         {
-            inputLinear.y -= vessel.ctrlState.mainThrottle;
-            inputLinear.y = Mathf.Clamp(inputLinear.y, -1f, 1f);
+            ctrlZ -= vessel.ctrlState.mainThrottle;
+            ctrlZ = Mathf.Clamp(ctrlZ, -1f, 1f);
         }
+        inputLinear = vessel.ReferenceTransform.rotation * new Vector3(enableX ? vessel.ctrlState.X : 0f, enableZ ? ctrlZ : 0f, enableY ? vessel.ctrlState.Y : 0f);
+        inputAngular = vessel.ReferenceTransform.rotation * new Vector3(enablePitch ? vessel.ctrlState.pitch : 0f, enableRoll ? vessel.ctrlState.roll : 0f, enableYaw ? vessel.ctrlState.yaw : 0);
 
         // Epsilon checks (min values)
         float EPSILON2 = EPSILON * EPSILON;
