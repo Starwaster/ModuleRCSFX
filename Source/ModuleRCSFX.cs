@@ -242,7 +242,7 @@ public class ModuleRCSFX : ModuleRCS
                     if (xform.position != Vector3.zero)
                     {
                         Vector3 position = xform.position;
-                        Vector3 torque = Vector3.Cross(inputAngular.normalized, (position - CoM).normalized);
+                        Vector3 torque = Vector3.Cross(inputAngular, (position - CoM).normalized);
 
                         Vector3 thruster;
                         if (useZaxis)
@@ -250,7 +250,7 @@ public class ModuleRCSFX : ModuleRCS
                         else
                             thruster = xform.up;
                         float thrust = Mathf.Max(Vector3.Dot(thruster, torque), 0f);
-                        thrust += Mathf.Max(Vector3.Dot(thruster, inputLinear.normalized), 0f);
+                        thrust += Mathf.Max(Vector3.Dot(thruster, inputLinear), 0f);
 
                         // thrust should now be normalized 0-1.
 
