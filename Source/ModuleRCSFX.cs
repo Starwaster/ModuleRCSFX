@@ -146,7 +146,7 @@ public class ModuleRCSFX : ModuleRCS
             {
                 Debug.Log("RCS module unable to find any transforms in part named " + thrusterTransformName);
             }
-    
+
         }
         else
             base.OnStart(state);
@@ -162,7 +162,7 @@ public class ModuleRCSFX : ModuleRCS
         if (useThrottle)
         {
             inputLinear.y -= vessel.ctrlState.mainThrottle;
-            inputLinear.y = Mathf.Clamp(inputLinear.y, - 1f, 1f);
+            inputLinear.y = Mathf.Clamp(inputLinear.y, -1f, 1f);
         }
 
         // Epsilon checks (min values)
@@ -202,8 +202,8 @@ public class ModuleRCSFX : ModuleRCS
         int fxC = thrusterFX.Count;
         if (TimeWarp.CurrentRate > 1.0f && TimeWarp.WarpMode == TimeWarp.Modes.HIGH)
         {
-            
-            for(int i = 0; i < fxC; ++i)
+
+            for (int i = 0; i < fxC; ++i)
             {
                 FXGroup fx = thrusterFX[i];
                 fx.setActive(false);
@@ -228,7 +228,7 @@ public class ModuleRCSFX : ModuleRCS
             {
                 rcs_active = vessel.ActionGroups[KSPActionGroup.RCS];
             }
-            if (vessel.ActionGroups[KSPActionGroup.RCS] && (inputAngular != Vector3.zero  || inputLinear != Vector3.zero))
+            if (vessel.ActionGroups[KSPActionGroup.RCS] && (inputAngular != Vector3.zero || inputLinear != Vector3.zero))
             {
 
                 // rb_velocity should include timewarp, right?
@@ -279,7 +279,7 @@ public class ModuleRCSFX : ModuleRCS
 
                             UpdatePropellantStatus();
                             float thrustForce = CalculateThrust(thrust, out success);
-                            
+
                             if (success)
                             {
                                 curThrust += thrustForce;
@@ -332,7 +332,7 @@ public class ModuleRCSFX : ModuleRCS
         if ((object)propellants != null)
         {
             int pCount = propellants.Count;
-            for (int i = 0; i < pCount; ++i )
+            for (int i = 0; i < pCount; ++i)
                 propellants[i].UpdateConnectedResources(part);
         }
     }
@@ -340,10 +340,10 @@ public class ModuleRCSFX : ModuleRCS
     new public float CalculateThrust(float totalForce, out bool success)
     {
         double massFlow = flowMult * fuelFlow * (double)totalForce;
-		
+
         double propAvailable = 1.0d;
 
-		if (!CheatOptions.InfiniteRCS)
+        if (!CheatOptions.InfiniteRCS)
             propAvailable = RequestPropellant(massFlow * TimeWarp.fixedDeltaTime);
 
         totalForce = (float)(massFlow * exhaustVel * propAvailable);
@@ -353,4 +353,4 @@ public class ModuleRCSFX : ModuleRCS
     }
 
 }
- 
+
